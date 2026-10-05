@@ -1,0 +1,5 @@
+# Workflows originales sin sanitizar
+*.original.json
+*-private.json
+.env
+*.env

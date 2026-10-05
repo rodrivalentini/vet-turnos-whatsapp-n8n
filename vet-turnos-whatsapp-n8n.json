@@ -1,0 +1,3901 @@
+{
+  "name": "Veterinaria - Turnero",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1888,
+        -112
+      ],
+      "id": "16f0120a-9a37-4406-a4a8-2b63cc876e21",
+      "name": "WhatsApp Trigger",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.texto }}",
+        "options": {
+          "systemMessage": "=### FECHA Y HORA ACTUAL\nAhora es: {{ $now.setZone('America/Argentina/Cordoba').setLocale('es').toFormat(\"cccc dd/MM/yyyy HH:mm\") }} (Argentina, -03:00).\nUsá esta fecha para interpretar \"hoy\", \"mañana\", \"el jueves\", etc.\nNombre de perfil de WhatsApp del cliente: {{ $('WhatsApp Trigger').first().json.contacts[0].profile.name }}. Es solo una referencia: para registrar un turno usá el nombre y apellido que el cliente te indique.\n\n### DATOS DE LA CLÍNICA\n- Duración de cada turno: 30 minutos.\n- Horario de atención (hora de Argentina):\n  - Lunes a viernes: de 9:00 a 13:00 y de 17:00 a 20:00.\n  - Sábado y domingo: cerrado, no se dan turnos.\n- Los turnos se dan cada 30 minutos. El primero de cada franja es a las 9:00 y a las 17:00. El último empieza a las 12:30 y a las 19:30, porque tiene que terminar antes del cierre de la franja.\n- No agendar turnos fuera de ese horario, entre las 13:00 y las 17:00, ni en fechas pasadas. Si el cliente pide un horario no válido, explicale el horario de atención y ofrecé el más cercano disponible.\n- Formato del título, IGUAL en Google Calendar y en la tabla de turnos: PENDIENTE - Nombre Apellido - Mascota\n- Fechas y horas para las herramientas de calendario: ISO 8601 con zona horaria -03:00 (ejemplo: 2026-10-01T10:00:00-03:00). El fin es siempre el inicio + 30 minutos.\n- Para el registro de turnos: fecha en formato YYYY-MM-DD y hora en formato HH:mm.\n\n### HERRAMIENTAS DISPONIBLES\n- Search_records_in_Airtable: busca los turnos activos del cliente (se filtra solo por su número). Usala al inicio de cualquier reprogramación.\n- Get_many_events_in_Google_Calendar: consulta eventos de un rango de fechas. Usala para ver disponibilidad.\n- Create_an_event_in_Google_Calendar: SOLO para turnos nuevos.\n- Create_a_record_in_Airtable: SOLO para turnos nuevos, después de crear el evento.\n- Update_an_event_in_Google_Calendar: SOLO para reprogramar. Requiere el Calendar Event ID del turno.\n- Update_record_in_Airtable: SOLO para reprogramar, después de actualizar el evento.\n\n### USO DE HERRAMIENTAS\nCuando necesites consultar o modificar datos, EJECUTÁ la herramienta correspondiente. NUNCA escribas en tu respuesta texto como \"Calling ...\", nombres de herramientas, parámetros ni JSON. Tu respuesta al cliente es siempre un mensaje en lenguaje natural, sin contenido técnico.\n\n### DISPONIBILIDAD\nPara saber si un horario está libre, consultá los eventos del día completo (desde las 00:00 hasta las 23:59, con -03:00). Un horario está ocupado si ya existe un evento que se superpone con él.\nCuando reprogramás un turno, ignorá el evento del propio turno que se está moviendo: no debe bloquear su nuevo horario.\nSi el horario pedido está ocupado, ofrecé los horarios libres más cercanos.\n\n### TURNO NUEVO\n1. Pedí los datos que falten: nombre, apellido, nombre de la mascota, motivo y día/hora deseados. El número de WhatsApp lo completa el sistema automáticamente: NO lo pidas.\n2. Consultá disponibilidad y proponé un horario libre.\n3. Cuando el cliente acepte, creá el evento en Google Calendar con el título indicado.\n4. Solo si el evento se creó correctamente, registrá el turno con el ID de ese evento.\n5. Informá que el turno quedó pendiente de confirmación por la clínica.\n\n### REPROGRAMACIÓN\nCuando el cliente quiera cambiar un turno, seguí estos pasos en orden:\n1. Buscá sus turnos activos con Search_records_in_Airtable.\n2. Si hay más de uno, preguntá cuál. Mostrá el turno (mascota, día, hora y motivo) y pedí que confirme que es ese. Nunca muestres IDs.\n3. Pedí la nueva fecha y hora y consultá disponibilidad, ignorando el evento del propio turno.\n4. Cuando el cliente acepte el nuevo horario, hacé estos dos pasos en este orden:\n   a. PRIMERO: actualizá el evento existente con Update_an_event_in_Google_Calendar, usando el Event ID del turno, la nueva fecha y hora de inicio y fin, y el título PENDIENTE - Nombre Apellido - Mascota.\n   b. SOLO SI el paso a funcionó: actualizá el registro existente con Update_record_in_Airtable (nueva fecha y hora).\n5. El Event ID a usar es SIEMPRE el valor del campo \"Calendar Event ID\" del registro que eligió el cliente. NUNCA uses el ID de eventos devueltos al consultar disponibilidad.\n6. NUNCA uses las herramientas de crear evento ni de crear registro para reprogramar. Reprogramar es modificar lo existente, no crear algo nuevo.\n7. NUNCA le digas al cliente que el turno fue reprogramado si no ejecutaste con éxito los dos pasos (a y b). Si un paso no se ejecutó, no lo des por hecho.\n8. Al terminar, informá el nuevo día y hora, y que el turno queda pendiente de reconfirmación por la clínica. Si el turno estaba confirmado, aclaralo: la clínica lo va a volver a confirmar.\n\n### CONSULTAS VETERINARIAS Y URGENCIAS\nNo des diagnósticos ni indiques medicación. Si el cliente describe una urgencia (dificultad para respirar, convulsiones, sangrado, golpe fuerte, intoxicación), indicale que se comunique de inmediato con la clínica por teléfono o se acerque sin esperar un turno. Para consultas generales sobre la atención, respondé con los datos de esta sección y ofrecé agendar un turno.\n\n### PRIVACIDAD Y ERRORES DE HERRAMIENTAS\nNunca mostrar al cliente información técnica, interna o relacionada con las herramientas utilizadas.\n\nNunca mencionar al cliente:\n- Airtable\n- Google Calendar como herramienta interna\n- IDs de eventos\n- IDs de registros\n- errores de API\n- errores de herramientas\n- nombres de nodos\n- nombres de credenciales\n- datos utilizados internamente por n8n\n- información para carga manual\n- instrucciones internas\n- notas internas\n- respuestas JSON de las herramientas\n\nSolo hablá de un inconveniente si una herramienta REALMENTE devolvió un error. Nunca digas que hubo un inconveniente sin haber intentado la acción, y nunca inventes un error para no completar una tarea. Si no tenés un dato para continuar (por ejemplo, no sabés a qué turno se refiere), preguntáselo al cliente.\n\nSi una herramienta falla, NO mostrar el error técnico al cliente.\n\nSi Google Calendar falla al crear o actualizar el turno:\nResponder únicamente que hubo un inconveniente al registrar el turno y que se debe intentar nuevamente. No continuar con los pasos siguientes.\n\nSi el registro de datos falla después de que el evento de Google Calendar se creó o se actualizó correctamente:\nNO informar el error técnico al cliente.\nNO mencionar qué herramienta falló.\nNO mostrar el ID del evento.\nNO mostrar datos internos.\nResponder de manera breve y natural indicando que hubo un inconveniente al finalizar la gestión y que el equipo lo revisará.\n\nNunca enviar al cliente una \"nota interna\".\n\n### DATOS DEL CLIENTE\nNo modificar, resumir, corregir ni reinterpretar los datos proporcionados por el cliente al registrarlos.\n\nCuando un dato deba almacenarse, utilizar exactamente el valor proporcionado por el cliente.\n\nNo cambiar nombres, apellidos, nombres de mascotas, teléfonos ni motivos.\n\nNo inventar información faltante.\n\nNo completar datos basándose en suposiciones.\n\nEl número de WhatsApp lo completa el sistema automáticamente y no debe solicitarse al cliente.\n\nEl motivo debe conservarse tal como fue expresado por el cliente.\n\nEl nombre de la mascota debe conservarse tal como fue expresado por el cliente."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        160,
+        -16
+      ],
+      "id": "41956381-5406-4b68-99b6-8262a77b1a3e",
+      "name": "AI Agent",
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        -96
+      ],
+      "id": "b29dd49a-af46-4983-8d82-e3d96384503f",
+      "name": "Send message",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "TU_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Veterinaria"
+        },
+        "start": "={{ $fromAI('start', 'Fecha y hora de inicio del evento en formato ISO 8601, incluyendo zona horaria.', 'string') }}",
+        "end": "={{ $fromAI('end', 'Fecha y hora de finalización del evento en formato ISO 8601, incluyendo zona horaria.', 'string') }}",
+        "additionalFields": {
+          "summary": "={{ $fromAI('summary', 'Título del evento a agendar', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        48,
+        224
+      ],
+      "id": "dacce3b3-328a-4473-85ac-00554f326fce",
+      "name": "Create an event in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "TU_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Veterinaria"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        224
+      ],
+      "id": "1c3b7ff5-ef6e-4b9c-8042-6dbb26450218",
+      "name": "Get many events in Google Calendar",
+      "notesInFlow": false,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "value": "TU_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Veterinaria"
+        },
+        "eventId": "={{ $json.calendarEventId }}",
+        "updateFields": {
+          "summary": "=CONFIRMADO - {{ $json.nombre }} {{ $json.apellido }} - {{ $json.mascota }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -1424,
+        1408
+      ],
+      "id": "74b05467-84c1-40de-86a0-75a166fa94be",
+      "name": "Actualizar título en Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Google Calendar account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "filterByFormula": "==AND({WhatsApp}='{{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}', OR({Estado}='PENDIENTE',{Estado}='CONFIRMADO'), IS_AFTER({Fecha turno}, DATEADD(TODAY(), -1, 'days')))",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        224
+      ],
+      "id": "7f2f4967-4cf3-4541-944e-5c8e8fdff2f3",
+      "name": "Search records in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "value": "TU_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Veterinaria"
+        },
+        "eventId": "={{ $fromAI('eventId', 'ID del evento de Google Calendar del turno a reprogramar. Es el valor del campo Calendar Event ID del registro encontrado en Airtable. Nunca inventarlo.', 'string') }}",
+        "updateFields": {
+          "end": "={{ $fromAI('end', 'Nueva fecha y hora de fin en ISO 8601 con zona horaria (-03:00). Es el inicio más 30 minutos.', 'string') }}",
+          "start": "={{ $fromAI('start', 'Nueva fecha y hora de inicio en ISO 8601 con zona horaria, por ejemplo 2026-10-01T10:00:00-03:00', 'string') }}",
+          "summary": "={{ $fromAI('summary', 'Título del evento. Formato: PENDIENTE - Nombre Apellido - Mascota', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        544,
+        224
+      ],
+      "id": "45e7d64c-ac1b-44dd-8cdf-594f8d0cff87",
+      "name": "Update an event in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id__using_to_match_', ``, 'string') }}",
+            "Turno": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Turno', ``, 'string') }}",
+            "Fecha turno": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Fecha_turno', ``, 'string') }}",
+            "Hora turno": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Hora_turno', ``, 'string') }}",
+            "Estado": "PENDIENTE",
+            "Último aviso": "PENDIENTE"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Turno",
+              "displayName": "Turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Apellido",
+              "displayName": "Apellido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "WhatsApp",
+              "displayName": "WhatsApp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Mascota",
+              "displayName": "Mascota",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Motivo",
+              "displayName": "Motivo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha turno",
+              "displayName": "Fecha turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Hora turno",
+              "displayName": "Hora turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "PENDIENTE",
+                  "value": "PENDIENTE"
+                },
+                {
+                  "name": "CONFIRMADO",
+                  "value": "CONFIRMADO"
+                },
+                {
+                  "name": "CANCELADO",
+                  "value": "CANCELADO"
+                },
+                {
+                  "name": "ATENDIDO",
+                  "value": "ATENDIDO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Calendar Event ID",
+              "displayName": "Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Mensaje ID",
+              "displayName": "Mensaje ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Última modificación",
+              "displayName": "Última modificación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Error de envío",
+              "displayName": "Error de envío",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Último aviso",
+              "displayName": "Último aviso",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        224
+      ],
+      "id": "03ad5ff6-ca4f-4d0f-b009-1241ef3a0258",
+      "name": "Update record in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -96,
+        240
+      ],
+      "id": "390c7015-d044-470d-8afc-2d2933be9c75",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000001",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "CONFIRMADO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000002",
+                    "leftValue": "={{ $json.ultimoAviso }}",
+                    "rightValue": "={{ $json.estado }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  },
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000003",
+                    "leftValue": "={{ $json.whatsapp }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Confirmado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000011",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "CANCELADO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000012",
+                    "leftValue": "={{ $json.ultimoAviso }}",
+                    "rightValue": "={{ $json.estado }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  },
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000013",
+                    "leftValue": "={{ $json.whatsapp }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancelado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000021",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "ATENDIDO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000022",
+                    "leftValue": "={{ $json.ultimoAviso }}",
+                    "rightValue": "={{ $json.estado }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  },
+                  {
+                    "id": "d1000000-0000-4000-8000-000000000023",
+                    "leftValue": "={{ $json.whatsapp }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Atendido"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1648,
+        1632
+      ],
+      "id": "5e62f891-4f63-4c53-91e2-8da62f23992b",
+      "name": "Según estado"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000001",
+              "name": "recordId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000002",
+              "name": "estado",
+              "value": "={{ ($json.fields ?? $json)['Estado'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000004",
+              "name": "nombre",
+              "value": "={{ ($json.fields ?? $json)['Nombre'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000005",
+              "name": "apellido",
+              "value": "={{ ($json.fields ?? $json)['Apellido'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000006",
+              "name": "mascota",
+              "value": "={{ ($json.fields ?? $json)['Mascota'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000007",
+              "name": "whatsapp",
+              "value": "={{ String(($json.fields ?? $json)['WhatsApp'] ?? '').replace(/\\D/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000008",
+              "name": "fechaTexto",
+              "value": "={{ DateTime.fromISO(String(($json.fields ?? $json)['Fecha turno'] ?? ''), { zone: 'utc' }).setLocale('es').toFormat('cccc dd/MM') }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000009",
+              "name": "horaTurno",
+              "value": "={{ ($json.fields ?? $json)['Hora turno'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-1001-4000-8000-000000000010",
+              "name": "calendarEventId",
+              "value": "={{ ($json.fields ?? $json)['Calendar Event ID'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d3c44170-b93c-4fa7-aa49-b13219aa0a0d",
+              "name": "ultimoAviso",
+              "value": "={{ ($json.fields ?? $json)['Último aviso'] ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2016,
+        1648
+      ],
+      "id": "262cbdf3-06c1-403c-855c-67c7420a9579",
+      "name": "Normalizar datos"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "TU_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Veterinaria"
+        },
+        "eventId": "={{ $json.calendarEventId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -1424,
+        1648
+      ],
+      "id": "5dab639e-edad-4542-8f4e-622a1c0c6e28",
+      "name": "Borrar evento cancelado",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Google Calendar account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.6-luna",
+          "mode": "list",
+          "cachedResultName": "gpt-5.6-luna"
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 400
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        240
+      ],
+      "id": "0bb4e155-cfa3-4b3c-be03-d25e75188e7a",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Normalizar datos').item.json.recordId }}",
+            "Mensaje ID": "={{ $json.messages[0].id }}",
+            "Último aviso": "={{ $('Normalizar datos').item.json.estado }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Turno",
+              "displayName": "Turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Apellido",
+              "displayName": "Apellido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "WhatsApp",
+              "displayName": "WhatsApp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Mascota",
+              "displayName": "Mascota",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Motivo",
+              "displayName": "Motivo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha turno",
+              "displayName": "Fecha turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Hora turno",
+              "displayName": "Hora turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "PENDIENTE",
+                  "value": "PENDIENTE"
+                },
+                {
+                  "name": "CONFIRMADO",
+                  "value": "CONFIRMADO"
+                },
+                {
+                  "name": "CANCELADO",
+                  "value": "CANCELADO"
+                },
+                {
+                  "name": "ATENDIDO",
+                  "value": "ATENDIDO"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar Event ID",
+              "displayName": "Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Mensaje ID",
+              "displayName": "Mensaje ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Última modificación",
+              "displayName": "Última modificación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Error de envío",
+              "displayName": "Error de envío",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Último aviso",
+              "displayName": "Último aviso",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        1552
+      ],
+      "id": "818d54c8-dbb3-4bec-abfb-a8ca34be8831",
+      "name": "Marcar enviada",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=Registra en Airtable una solicitud de turno veterinario.\n\nUsá esta herramienta ÚNICAMENTE cuando:\n1. El cliente haya aceptado un horario disponible.\n2. Se haya creado correctamente el evento PENDIENTE en Google Calendar.\n3. Tengas todos estos datos:\n   - nombre\n   - apellido\n   - nombre de la mascota\n   - motivo\n   - fecha\n   - hora\n   - ID del evento de Google Calendar\n\nEl número de WhatsApp y el cliente se completan automáticamente: NO los pidas ni los inventes.\n\nEl registro debe crearse siempre con Estado = PENDIENTE.\n\nNo uses esta herramienta para:\n- consultas generales\n- consultas veterinarias\n- consultas sobre horarios\n- consultas sobre dirección\n- cancelaciones\n- reprogramaciones\n- conversaciones donde todavía no existe un turno aceptado.\n\nNunca inventes datos.\nNunca inventes un Calendar Event ID.",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Turno": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Turno', `Título del turno. Formato obligatorio: PENDIENTE - Nombre Apellido - Mascota\n`, 'string') }}",
+            "Nombre": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Nombre', `Nombre del cliente, sin apellido.`, 'string') }}",
+            "Apellido": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Apellido', `Apellido del cliente, sin nombre.\n`, 'string') }}",
+            "WhatsApp": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+            "Mascota": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Mascota', `Nombre de la mascota.`, 'string') }}",
+            "Motivo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Motivo', `Motivo de la consulta indicado por el cliente.`, 'string') }}",
+            "Fecha turno": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Fecha_turno', `Fecha del turno aceptado por el cliente en formato YYYY-MM-DD.`, 'string') }}",
+            "Hora turno": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Hora_turno', `Hora del turno aceptado por el cliente en formato HH:mm.\n`, 'string') }}",
+            "Calendar Event ID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calendar_Event_ID', `ID del evento creado previamente en Google Calendar.`, 'string') }}",
+            "Estado": "PENDIENTE",
+            "Cliente": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Turno",
+              "displayName": "Turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Apellido",
+              "displayName": "Apellido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "WhatsApp",
+              "displayName": "WhatsApp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mascota",
+              "displayName": "Mascota",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Motivo",
+              "displayName": "Motivo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha turno",
+              "displayName": "Fecha turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Hora turno",
+              "displayName": "Hora turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "PENDIENTE",
+                  "value": "PENDIENTE"
+                },
+                {
+                  "name": "CONFIRMADO",
+                  "value": "CONFIRMADO"
+                },
+                {
+                  "name": "CANCELADO",
+                  "value": "CANCELADO"
+                },
+                {
+                  "name": "ATENDIDO",
+                  "value": "ATENDIDO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Calendar Event ID",
+              "displayName": "Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje ID",
+              "displayName": "Mensaje ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Última modificación",
+              "displayName": "Última modificación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Último aviso",
+              "displayName": "Último aviso",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Cliente",
+              "displayName": "Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Recordatorio enviado",
+              "displayName": "Recordatorio enviado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Errores",
+              "displayName": "Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        224
+      ],
+      "id": "6cce56ce-4ccd-4ddb-a46e-5184d0086ce4",
+      "name": "Create a record in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Errores",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Resumen": "=Falla al enviar aviso - {{ $('Normalizar datos').first().json.estado }} - {{ $('Normalizar datos').first().json.nombre }} {{ $('Normalizar datos').first().json.apellido }} - {{ $('Normalizar datos').first().json.mascota }}",
+            "Fecha": "={{ $now.toISO() }}",
+            "Flujo": "Avisos de estado",
+            "Mensaje de error": "={{ typeof $json.error === 'string' ? $json.error : ($json.error?.message ?? JSON.stringify($json.error ?? $json)) }}",
+            "WhatsApp cliente": "={{ $('Normalizar datos').first().json.whatsapp }}",
+            "Estado": "Nuevo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Resumen",
+              "displayName": "Resumen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Flujo",
+              "displayName": "Flujo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje de error",
+              "displayName": "Mensaje de error",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "WhatsApp cliente",
+              "displayName": "WhatsApp cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Turnos",
+              "displayName": "Turnos",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Turno (from Turnos)",
+              "displayName": "Turno (from Turnos)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Nuevo",
+                  "value": "Nuevo"
+                },
+                {
+                  "name": "Revisado",
+                  "value": "Revisado"
+                },
+                {
+                  "name": "Resuelto",
+                  "value": "Resuelto"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        1744
+      ],
+      "id": "a2ca9407-781a-48da-b5f0-af871345f1f7",
+      "name": "Registrar error en tabla Errores",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('Normalizar datos').item.json.whatsapp }}",
+        "template": "turnos_confirmados|es_AR",
+        "components": {
+          "component": [
+            {
+              "bodyParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.nombre }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.mascota }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.fechaTexto }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.horaTurno }}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -1200,
+        1408
+      ],
+      "id": "4ee0c5d9-7125-477d-8238-bb7cf709045b",
+      "name": "Enviar plantilla de confirmación",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('Normalizar datos').item.json.whatsapp }}",
+        "template": "turno_cancelado|es_AR",
+        "components": {
+          "component": [
+            {
+              "bodyParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.nombre }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.mascota }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.fechaTexto }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.horaTurno }}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -1200,
+        1648
+      ],
+      "id": "cbb5900b-6646-45c4-87f2-7609a66f3f2b",
+      "name": "Enviar aviso de cancelación",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('Normalizar datos').item.json.whatsapp }}",
+        "template": "gracias_por_la_visita|es_AR",
+        "components": {
+          "component": [
+            {
+              "bodyParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.nombre }}"
+                  },
+                  {
+                    "text": "={{ $('Normalizar datos').item.json.mascota }}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -1200,
+        1888
+      ],
+      "id": "6c80c335-1635-4b7d-94d5-8b622cb6fbc6",
+      "name": "Enviar agradecimiento",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Errores",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Resumen": "Falla del agente de turnos",
+            "Fecha": "={{ $now.toISO() }}",
+            "Flujo": "Agente de turnos",
+            "Mensaje de error": "={{ JSON.stringify($json).slice(0, 2000) }}",
+            "WhatsApp cliente": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+            "Estado": "Nuevo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Resumen",
+              "displayName": "Resumen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Flujo",
+              "displayName": "Flujo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje de error",
+              "displayName": "Mensaje de error",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "WhatsApp cliente",
+              "displayName": "WhatsApp cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Nuevo",
+                  "value": "Nuevo"
+                },
+                {
+                  "name": "Revisado",
+                  "value": "Revisado"
+                },
+                {
+                  "name": "Resuelto",
+                  "value": "Resuelto"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        96
+      ],
+      "id": "0f7afff2-ee60-4464-971e-e6d16e9fa080",
+      "name": "Registrar error del agente",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+        "textBody": "Disculpá, tuvimos un inconveniente para procesar tu mensaje 🙏 Probá de nuevo en unos minutos y, si seguís con problemas, escribinos o llamá a la clínica.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1376,
+        96
+      ],
+      "id": "aca61407-15dc-457d-8b9a-17cef0984cd2",
+      "name": "Avisar falla al cliente",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-0000-4000-8000-000000000001",
+                    "leftValue": "={{ $json.messages?.[0]?.type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "e1000000-0000-4000-8000-000000000002",
+                    "leftValue": "={{ $json.messages?.[0]?.text?.body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-0000-4000-8000-000000000003",
+                    "leftValue": "={{ $json.messages?.[0]?.type }}",
+                    "rightValue": "button",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Botón"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1664,
+        -112
+      ],
+      "id": "d5c453bc-501c-463f-b2db-a862d9222928",
+      "name": "Tipo de mensaje"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1000000-1001-4000-8000-000000000001",
+              "name": "texto",
+              "value": "={{ $json.messages[0].text.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        -416
+      ],
+      "id": "1b126628-2a7c-4b83-b484-e798f0cca13d",
+      "name": "Texto del cliente"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "filterByFormula": "=AND(OR({Mensaje ID}='{{ $json.messages[0].context.id }}', {Mensaje ID recordatorio}='{{ $json.messages[0].context.id }}'), {WhatsApp}='{{ $json.contacts[0].wa_id }}')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1232,
+        160
+      ],
+      "id": "ba816855-ec9f-437f-a596-2af0d15b5bc7",
+      "name": "Buscar turno del botón",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1000000-1002-4000-8000-000000000001",
+              "name": "recordId",
+              "value": "={{ $json.id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e1000000-1002-4000-8000-000000000002",
+              "name": "estado",
+              "value": "={{ ($json.fields ?? $json)['Estado'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e1000000-1002-4000-8000-000000000003",
+              "name": "mascota",
+              "value": "={{ ($json.fields ?? $json)['Mascota'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e1000000-1002-4000-8000-000000000004",
+              "name": "fechaTexto",
+              "value": "={{ DateTime.fromISO(String(($json.fields ?? $json)['Fecha turno'] ?? ''), { zone: 'utc' }).setLocale('es').toFormat('cccc dd/MM') }}",
+              "type": "string"
+            },
+            {
+              "id": "e1000000-1002-4000-8000-000000000005",
+              "name": "horaTurno",
+              "value": "={{ ($json.fields ?? $json)['Hora turno'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e1000000-1002-4000-8000-000000000006",
+              "name": "accion",
+              "value": "={{ $('WhatsApp Trigger').first().json.messages[0].button?.payload ?? $('WhatsApp Trigger').first().json.messages[0].button?.text ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e1000000-1002-4000-8000-000000000007",
+              "name": "whatsapp",
+              "value": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1008,
+        160
+      ],
+      "id": "cbac4899-1399-43d3-95f5-29cce44b93cd",
+      "name": "Datos del botón"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000001",
+                    "leftValue": "={{ $json.recordId }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Sin turno"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000002",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "Cancelar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  },
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000003",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "CANCELADO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  },
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000004",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "ATENDIDO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancelar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000005",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "Reprogramar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  },
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000006",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "CANCELADO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  },
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000007",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "ATENDIDO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reprogramar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000008",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "asist",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Asistiré"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1000000-2001-4000-8000-000000000009",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "Reservar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reservar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Otro"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -784,
+        96
+      ],
+      "id": "f6c1d629-60c1-4eb0-9768-1d710aadee7c",
+      "name": "Acción del botón"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Estado": "CANCELADO"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "PENDIENTE",
+                  "value": "PENDIENTE"
+                },
+                {
+                  "name": "CONFIRMADO",
+                  "value": "CONFIRMADO"
+                },
+                {
+                  "name": "CANCELADO",
+                  "value": "CANCELADO"
+                },
+                {
+                  "name": "ATENDIDO",
+                  "value": "ATENDIDO"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        -224
+      ],
+      "id": "52a6eae3-8b48-4ee5-b9a3-c39665dda5f8",
+      "name": "Cancelar turno desde botón",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1000000-1003-4000-8000-000000000001",
+              "name": "texto",
+              "value": "=Quiero reprogramar mi turno de {{ $json.mascota }} del {{ $json.fechaTexto }} a las {{ $json.horaTurno }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        -32
+      ],
+      "id": "f21797d4-080e-4a03-8da7-4b691aa4599b",
+      "name": "Texto: reprogramar"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.whatsapp }}",
+        "textBody": "¡Gracias por confirmar! Te esperamos 🐾",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        160
+      ],
+      "id": "9688069a-c97c-4d6f-9da7-7c884695f262",
+      "name": "Confirmar asistencia",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1000000-1004-4000-8000-000000000001",
+              "name": "texto",
+              "value": "Quiero sacar un turno",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        352
+      ],
+      "id": "74d87ace-4e5c-4f48-a622-80e95c783a09",
+      "name": "Texto: reservar"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.whatsapp }}",
+        "textBody": "No encontré un turno activo para esa opción. Si querés sacar uno nuevo, escribinos por acá y te ayudamos 🐾",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        544
+      ],
+      "id": "aee2320e-f9c6-483f-95c3-7962e7303fde",
+      "name": "Turno no activo",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "airtableTokenApi",
+        "baseId": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "triggerField": "Última modificación",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2256,
+        1648
+      ],
+      "id": "8b040b36-b382-4983-a0df-02565cd9a394",
+      "name": "Airtable Trigger",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 1️⃣ Entrada y clasificación del mensaje\n\n**Qué hace:** recibe cada mensaje de WhatsApp del cliente (Cloud API de Meta) y decide por qué camino sigue.\n\n**Nodos**\n- **WhatsApp Trigger**: webhook de Meta. Se activa con los eventos de mensajes.\n- **Tipo de mensaje**: Switch según `messages[0].type`\n  - **Texto** → pasa al agente de IA\n  - **Botón** → rama de botones (cancelar, reprogramar, asistir, reservar)\n\n**Datos clave**\n- Número del cliente: `contacts[0].wa_id` (nunca se le pide al cliente)\n- Texto: `messages[0].text.body`\n- Botón tocado: `messages[0].button.payload`\n- Plantilla a la que respondió: `messages[0].context.id`\n\n**Descartes:** los avisos de estado de Meta (entregado, leído) y los mensajes sin texto (audio, imagen) no coinciden con ninguna salida y terminan acá, sin ejecutar nada más.",
+        "height": 868,
+        "width": 944,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2384,
+        -672
+      ],
+      "id": "00ab5f22-d948-43f4-aa63-57fdc8f22eea",
+      "name": "Nota 1 - Entrada y clasificación"
+    },
+    {
+      "parameters": {
+        "content": "## 2️⃣ Rama de botones (respuestas rápidas de las plantillas)\n\n**Qué hace:** procesa el toque de un botón de las plantillas (confirmación y recordatorio) **sin usar IA**. Es una rama determinista: rápida, sin costo de modelo y sin margen de error.\n\n**Nodos**\n- **Buscar turno del botón**: busca en Airtable el turno por `Mensaje ID` (el `context.id` de la plantilla) **y** por el WhatsApp de quien tocó el botón.\n- **Datos del botón**: ordena los datos (turno, estado, mascota, fecha, hora, acción, WhatsApp).\n- **Acción del botón**: Switch según el botón elegido.\n\n**Acciones**\n- **Cancelar turno** → *Cancelar turno desde botón*: pasa el turno a CANCELADO. El workflow de avisos de estado borra el evento de Calendar y envía la plantilla de cancelación.\n- **Reprogramar** → *Texto: reprogramar*: arma \"Quiero reprogramar mi turno de...\" y lo envía al agente de IA (recuadro 3).\n- **Sí, asistiré** → *Confirmar asistencia*: respuesta inmediata de agradecimiento.\n- **Reservar otro horario** → *Texto: reservar*: pasa \"Quiero sacar un turno\" al agente de IA.\n- **Sin turno, turno ya cancelado o atendido, u otra opción** → *Turno no activo*: avisa que no hay un turno activo para esa opción.\n\n**Seguridad:** el turno se valida con doble clave (Mensaje ID + número del cliente). Nadie puede cancelar ni mover turnos ajenos.",
+        "height": 1712,
+        "width": 1104,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        -1008
+      ],
+      "id": "856f277c-37e1-4f43-bf12-be1971bc1a27",
+      "name": "Nota 2 - Rama de botones"
+    },
+    {
+      "parameters": {
+        "content": "## 3️⃣ Agente de IA (turnos por conversación)\n\n**Qué hace:** conversa con el cliente en lenguaje natural para **sacar turnos nuevos** y **reprogramar** los existentes. Consulta y escribe en Airtable y Google Calendar a través de herramientas.\n\n**Entrada:** el campo `texto`, que llega desde *Texto del cliente* (mensajes escritos) o desde los textos que arma la rama de botones (recuadro 2).\n\n**Componentes**\n- **AI Agent**: system prompt con fecha y hora actual dinámica (`$now`, zona horaria de Argentina), datos y horario de la clínica, flujos paso a paso y reglas de privacidad. Reintenta ante fallos; si igual falla, sale por la salida de error (recuadro 4).\n- **OpenAI Chat Model**: motor de razonamiento.\n- **Simple Memory**: memoria por cliente. La clave de sesión es su número de WhatsApp y guarda las últimas 10 interacciones.\n\n**Herramientas**\n- **Get many events** (Calendar): consulta la disponibilidad del día.\n- **Create an event** (Calendar): crea el evento PENDIENTE.\n- **Create a record** (Airtable): registra el turno y crea o enlaza al cliente en la tabla Clientes.\n- **Search records** (Airtable): trae los turnos activos del cliente (filtro fijo por su número).\n- **Update an event** (Calendar): mueve el evento al nuevo horario.\n- **Update record** (Airtable): actualiza fecha y hora y vuelve el turno a PENDIENTE.\n\n**Flujo: turno nuevo**\nPedir datos → consultar disponibilidad → proponer horario → crear evento → registrar turno (PENDIENTE).\n\n**Flujo: reprogramación**\nBuscar turnos → elegir cuál → nueva fecha → disponibilidad → actualizar Calendar → **solo si funcionó**, actualizar Airtable.\n\n**Reglas de seguridad**\n- El número de WhatsApp sale del trigger: nunca se le pide al cliente ni lo decide el modelo.\n- No da diagnósticos ni medicación: ante una urgencia, deriva a la clínica.\n- No muestra IDs, nombres de herramientas ni errores técnicos.\n- **Validación humana:** el turno queda PENDIENTE hasta que la clínica lo confirme (workflow aparte de avisos de estado).",
+        "height": 1804,
+        "width": 1356,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -1120
+      ],
+      "id": "d589b722-73dd-4f40-9caa-b1fc8b7e0704",
+      "name": "Nota 3 - Agente de IA"
+    },
+    {
+      "parameters": {
+        "content": "## 4️⃣ Salida y manejo de errores\n\n**Qué hace:** entrega al cliente la respuesta del agente por WhatsApp. Si el agente falla, registra el error y le avisa al cliente: nadie se queda sin respuesta.\n\n**Camino feliz**\n- **AI Agent** (salida *Success*) → **Send message**: envía la respuesta (`output`) al número del cliente (`wa_id`). Va como texto libre porque el cliente acaba de escribir y la ventana de 24 h está abierta.\n\n**Camino de error**\n- **AI Agent** (salida *Error*, después de reintentar) → **Registrar error del agente**: crea una fila en la tabla *Errores* de Airtable con el flujo, el detalle técnico, el WhatsApp del cliente y estado *Nuevo*.\n- → **Avisar falla al cliente**: mensaje de disculpa para que pruebe de nuevo.\n\n**Resiliencia**\n- El agente reintenta solo ante fallos transitorios.\n- El cliente no ve datos técnicos: solo el mensaje de disculpa.\n- La clínica revisa los errores en la tabla *Errores* y los marca como Nuevo, Revisado o Resuelto.\n- Los otros workflows (avisos de estado y notificación a la clínica) registran sus fallos en esa misma tabla.",
+        "height": 1120,
+        "width": 720,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -784
+      ],
+      "id": "25d8c6e8-0d92-4620-ba67-21bf3787f482",
+      "name": "Nota 4 - Salida y errores"
+    },
+    {
+      "parameters": {
+        "content": "## 1️⃣ Disparador y preparación de datos\n\n**Qué hace:** detecta cuando la clínica cambia el estado de un turno en Airtable y prepara los datos para avisar al cliente.\n\n**Nodos**\n- **Airtable Trigger**: revisa la tabla *Turnos* cada minuto y se dispara cuando cambia el campo *Estado*. Escribir otros campos (como *Último aviso*) no lo vuelve a disparar, así se evitan los bucles.\n- **Normalizar datos**: ordena los campos del turno: nombre, mascota, WhatsApp (solo dígitos), fecha en texto (viernes 02/10), hora, Calendar Event ID y Último aviso.\n\n**Dato clave:** *Último aviso* guarda el último estado notificado al cliente. Es lo que evita avisos duplicados.",
+        "height": 660,
+        "width": 500,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2320,
+        1200
+      ],
+      "id": "0606c7c2-169d-4d60-b89f-ea69076a9fa0",
+      "name": "Nota 1 - Disparador y datos"
+    },
+    {
+      "parameters": {
+        "content": "## 2️⃣ Avisos según el estado del turno\n\n**Qué hace:** manda al cliente el aviso que corresponde a cada cambio de estado, con **plantillas aprobadas de WhatsApp** (válidas fuera de la ventana de 24 h).\n\n**Nodo central: Según estado** (Switch). Cada salida exige tres condiciones: el estado correspondiente, que sea distinto de *Último aviso* (no repetir) y que el turno tenga número de WhatsApp. Los turnos PENDIENTE no salen por ninguna rama.\n\n**CONFIRMADO** (la clínica aprueba el turno)\nActualizar título en Calendar a *CONFIRMADO - ...* → plantilla de confirmación (nombre, mascota, fecha y hora).\n\n**CANCELADO**\nBorrar evento cancelado: el horario queda libre para que otro cliente pueda reservarlo → plantilla de cancelación.\n\n**ATENDIDO**\nPlantilla de agradecimiento por la visita. No toca Calendar.\n\n**Validación humana:** el cliente solo recibe estos avisos después de que una persona de la clínica cambia el *Estado* en Airtable.\n\n**Resiliencia:** si Calendar falla (por ejemplo, el evento ya no existe), el flujo sigue y el cliente recibe el aviso igual.",
+        "height": 1324,
+        "width": 876,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1760,
+        768
+      ],
+      "id": "6024ed55-7ab7-4345-8332-ec2561f6ddce",
+      "name": "Nota 2 - Avisos según estado"
+    },
+    {
+      "parameters": {
+        "content": "## 3️⃣ Cierre y registro de errores\n\n**Envío correcto → Marcar enviada**\nGuarda en el turno el *Último aviso* (el estado notificado) y el *Mensaje ID* de WhatsApp, para poder rastrear la entrega.\n\n**Envío fallido → Registrar error en tabla Errores**\nCrea una fila con flujo *Avisos de estado*, el detalle del error, el WhatsApp del cliente y estado *Nuevo*, para que la clínica la revise.\n\nComo en un fallo *Último aviso* no se actualiza, el aviso se puede reintentar volviendo a cambiar el estado del turno.\n\nLas tres ramas de aviso comparten estos dos nodos.",
+        "height": 844,
+        "width": 424
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        1088
+      ],
+      "id": "96e32a74-ac04-4c4a-856f-73fcba0a8316",
+      "name": "Nota 3 - Cierre y errores"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Errores",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Resumen": "=Falla al notificar turno nuevo - {{ $('Datos del turno nuevo').first().json.mascota }}",
+            "Fecha": "={{ $now.toISO() }}",
+            "Flujo": "Notificación a la clínica",
+            "Mensaje de error": "={{ JSON.stringify($json).slice(0, 2000) }}",
+            "WhatsApp cliente": "={{ $('Datos del turno nuevo').first().json.whatsapp }}",
+            "Estado": "Nuevo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Resumen",
+              "displayName": "Resumen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Flujo",
+              "displayName": "Flujo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje de error",
+              "displayName": "Mensaje de error",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "WhatsApp cliente",
+              "displayName": "WhatsApp cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Nuevo",
+                  "value": "Nuevo"
+                },
+                {
+                  "name": "Revisado",
+                  "value": "Revisado"
+                },
+                {
+                  "name": "Resuelto",
+                  "value": "Resuelto"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        1600
+      ],
+      "id": "f3cd7623-6034-4fa8-a3af-2da487bf0258",
+      "name": "Registrar error de notificación",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Datos del turno nuevo').first().json.recordId }}",
+            "Hilo de correo": "={{ $json.threadId }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Turno",
+              "displayName": "Turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Apellido",
+              "displayName": "Apellido",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "WhatsApp",
+              "displayName": "WhatsApp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Mascota",
+              "displayName": "Mascota",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Motivo",
+              "displayName": "Motivo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha turno",
+              "displayName": "Fecha turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Hora turno",
+              "displayName": "Hora turno",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "PENDIENTE",
+                  "value": "PENDIENTE"
+                },
+                {
+                  "name": "CONFIRMADO",
+                  "value": "CONFIRMADO"
+                },
+                {
+                  "name": "CANCELADO",
+                  "value": "CANCELADO"
+                },
+                {
+                  "name": "ATENDIDO",
+                  "value": "ATENDIDO"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar Event ID",
+              "displayName": "Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Mensaje ID",
+              "displayName": "Mensaje ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Última modificación",
+              "displayName": "Última modificación",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Creado",
+              "displayName": "Creado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Hilo de correo",
+              "displayName": "Hilo de correo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Último aviso",
+              "displayName": "Último aviso",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Cliente",
+              "displayName": "Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Recordatorio enviado",
+              "displayName": "Recordatorio enviado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Errores",
+              "displayName": "Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        1408
+      ],
+      "id": "711e8d2f-f0cd-4792-ac5e-21e5a8cf6e0f",
+      "name": "Guardar hilo de correo",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.emailClinica }}",
+        "subject": "=Nuevo turno pendiente: {{ $json.mascota }} ({{ $json.nombre }} {{ $json.apellido }})",
+        "message": "=<p>Hay un turno nuevo <b>pendiente de confirmación</b>:</p><ul><li><b>Cliente:</b> {{ $json.nombre }} {{ $json.apellido }}</li><li><b>Mascota:</b> {{ $json.mascota }}</li><li><b>Motivo:</b> {{ $json.motivo }}</li><li><b>Fecha:</b> {{ $json.fechaTexto }} a las {{ $json.horaTurno }} hs</li><li><b>WhatsApp:</b> {{ $json.whatsapp }}</li></ul><p><a href=\"{{ $json.linkTurno }}\">Abrir el turno en Airtable</a></p><p>Para aprobarlo, cambiá el <b>Estado</b> a CONFIRMADO. Al hacerlo, el cliente recibe el aviso automático.</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        464,
+        1504
+      ],
+      "id": "d5b4bf58-05da-4e12-83f9-d3b38d9cb512",
+      "name": "Pedir aprobación por Gmail",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "h1000000-2001-4000-8000-000000000001",
+              "leftValue": "={{ $json.estado }}",
+              "rightValue": "PENDIENTE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        1504
+      ],
+      "id": "7898536f-f4bb-4d04-b2d2-d7e2db7bbcd7",
+      "name": "¿Turno pendiente?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "h1000000-1001-4000-8000-000000000001",
+              "name": "recordId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000002",
+              "name": "estado",
+              "value": "={{ ($json.fields ?? $json)['Estado'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000003",
+              "name": "nombre",
+              "value": "={{ ($json.fields ?? $json)['Nombre'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000004",
+              "name": "apellido",
+              "value": "={{ ($json.fields ?? $json)['Apellido'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000005",
+              "name": "mascota",
+              "value": "={{ ($json.fields ?? $json)['Mascota'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000006",
+              "name": "motivo",
+              "value": "={{ ($json.fields ?? $json)['Motivo'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000007",
+              "name": "whatsapp",
+              "value": "={{ String(($json.fields ?? $json)['WhatsApp'] ?? '').replace(/\\D/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000008",
+              "name": "fechaTexto",
+              "value": "={{ DateTime.fromISO(String(($json.fields ?? $json)['Fecha turno'] ?? ''), { zone: 'utc' }).setLocale('es').toFormat('cccc dd/MM') }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000009",
+              "name": "horaTurno",
+              "value": "={{ ($json.fields ?? $json)['Hora turno'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000010",
+              "name": "linkTurno",
+              "value": "=https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID/{{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "h1000000-1001-4000-8000-000000000011",
+              "name": "emailClinica",
+              "value": "clinica@ejemplo.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        1504
+      ],
+      "id": "d00d9d6a-4d65-4ae4-95ca-f3c2fd730b34",
+      "name": "Datos del turno nuevo"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "airtableTokenApi",
+        "baseId": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "triggerField": "Fecha modificada",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        1504
+      ],
+      "id": "fa61d372-3f40-4d5b-a5b1-39db1b093154",
+      "name": "Turno nuevo en Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 1️⃣ Detección del turno nuevo\n\n**Qué hace:** detecta cada turno recién creado por el bot y verifica que esté pendiente de aprobación.\n\n**Nodos**\n- **Turno nuevo en Airtable**: revisa la tabla *Turnos* cada minuto y se dispara solo con registros **nuevos** (campo *Creado*). Editar un turno existente no lo dispara, así se evita consumir ejecuciones de más.\n- **Datos del turno nuevo**: ordena nombre, mascota, motivo, fecha, hora, WhatsApp, el link directo al registro y el correo de la clínica (se configura en un único lugar).\n- **¿Turno pendiente?**: solo los turnos en estado PENDIENTE siguen adelante. El resto termina acá.",
+        "height": 596,
+        "width": 688,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        1104
+      ],
+      "id": "617e0d80-ecd7-4e5c-b07b-219271d51b79",
+      "name": "Nota 1 - Detección del turno nuevo"
+    },
+    {
+      "parameters": {
+        "content": "## 2️⃣ Aprobación humana por Gmail\n\n**Qué hace:** frena el proceso y pide la decisión de una persona **antes** de contactar al cliente.\n\n**Nodos**\n- **Pedir aprobación por Gmail**: correo a la clínica con los datos del turno, el link al registro y la instrucción de aprobarlo cambiando el *Estado* a CONFIRMADO.\n- **Guardar hilo de correo**: guarda el *Thread ID* de Gmail en el turno, para mantener la conversación organizada.\n- **Registrar error de notificación**: si Gmail falla, crea una fila en la tabla *Errores* (flujo *Notificación a la clínica*).\n\n**Cómo se cierra el ciclo (human-in-the-loop)**\nEl turno queda PENDIENTE y el cliente no recibe la confirmación hasta que una persona de la clínica cambia el *Estado*. Ese cambio activa el workflow de *Avisos de estado*, que le manda la plantilla de WhatsApp.",
+        "height": 880,
+        "width": 560,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        416,
+        912
+      ],
+      "id": "b309fede-c1c7-4518-b020-fe0dede5b4c2",
+      "name": "Nota 2 - Aprobación por Gmail"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 21
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2128,
+        2672
+      ],
+      "id": "0f4d706e-911b-4b3d-aaa6-0c74993a499c",
+      "name": "Todos los días a las 9:00"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "filterByFormula": "=AND({Estado}='CONFIRMADO', NOT({Recordatorio enviado}), DATETIME_FORMAT({Fecha turno},'YYYY-MM-DD')='{{ $now.setZone('America/Argentina/Cordoba').plus({ days: 1 }).toFormat('yyyy-MM-dd') }}')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1904,
+        2672
+      ],
+      "id": "63091af5-25f9-486e-863d-9bf607f78cc2",
+      "name": "Buscar turnos de mañana",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1000000-1001-4000-8000-000000000001",
+              "name": "recordId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "r1000000-1001-4000-8000-000000000002",
+              "name": "nombre",
+              "value": "={{ ($json.fields ?? $json)['Nombre'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "r1000000-1001-4000-8000-000000000003",
+              "name": "apellido",
+              "value": "={{ ($json.fields ?? $json)['Apellido'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "r1000000-1001-4000-8000-000000000004",
+              "name": "mascota",
+              "value": "={{ ($json.fields ?? $json)['Mascota'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "r1000000-1001-4000-8000-000000000005",
+              "name": "whatsapp",
+              "value": "={{ String(($json.fields ?? $json)['WhatsApp'] ?? '').replace(/\\D/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "r1000000-1001-4000-8000-000000000006",
+              "name": "fechaTexto",
+              "value": "={{ DateTime.fromISO(String(($json.fields ?? $json)['Fecha turno'] ?? ''), { zone: 'utc' }).setLocale('es').toFormat('cccc dd/MM') }}",
+              "type": "string"
+            },
+            {
+              "id": "r1000000-1001-4000-8000-000000000007",
+              "name": "horaTurno",
+              "value": "={{ ($json.fields ?? $json)['Hora turno'] ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1680,
+        2672
+      ],
+      "id": "52d41e1a-d4c6-4e5e-810b-2e0a32492058",
+      "name": "Normalizar turnos de mañana"
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "TU_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.whatsapp }}",
+        "template": "recordatorio_turno|es_AR",
+        "components": {
+          "component": [
+            {
+              "bodyParameters": {
+                "parameter": [
+                  {
+                    "text": "={{ $json.nombre }}"
+                  },
+                  {
+                    "text": "={{ $json.mascota }}"
+                  },
+                  {
+                    "text": "={{ $json.fechaTexto }}"
+                  },
+                  {
+                    "text": "={{ $json.horaTurno }}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -1264,
+        2672
+      ],
+      "id": "f54fc178-e863-4775-a67c-eb6882fcd10f",
+      "name": "Enviar recordatorio",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "WhatsApp account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Turnos",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Normalizar turnos de mañana').item.json.recordId }}",
+            "Recordatorio enviado": true,
+            "Mensaje ID recordatorio": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Recordatorio enviado",
+              "displayName": "Recordatorio enviado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje ID recordatorio",
+              "displayName": "Mensaje ID recordatorio",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        2592
+      ],
+      "id": "01d8c1e7-29d2-4cf9-a310-d2537c851c9b",
+      "name": "Marcar recordatorio enviado",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Veterinaria",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "TU_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Errores",
+          "cachedResultUrl": "https://airtable.com/TU_AIRTABLE_BASE_ID/TU_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Resumen": "=Falla al enviar recordatorio - {{ $json.mascota ?? $('Normalizar turnos de mañana').first().json.mascota }}",
+            "Fecha": "={{ $now.toISO() }}",
+            "Flujo": "Recordatorios",
+            "Mensaje de error": "={{ JSON.stringify($json).slice(0, 2000) }}",
+            "WhatsApp cliente": "={{ $json.whatsapp ?? $('Normalizar turnos de mañana').first().json.whatsapp }}",
+            "Estado": "Nuevo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Resumen",
+              "displayName": "Resumen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Flujo",
+              "displayName": "Flujo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje de error",
+              "displayName": "Mensaje de error",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "WhatsApp cliente",
+              "displayName": "WhatsApp cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Nuevo",
+                  "value": "Nuevo"
+                },
+                {
+                  "name": "Revisado",
+                  "value": "Revisado"
+                },
+                {
+                  "name": "Resuelto",
+                  "value": "Resuelto"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        2800
+      ],
+      "id": "640fd5f3-494f-4d63-86ec-32dab684e56e",
+      "name": "Registrar error de recordatorio",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "REEMPLAZAR_CREDENCIAL_ID",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 1️⃣ Disparo diario y selección de turnos\n\n**Qué hace:** todos los días a las 9:00 (hora de Argentina) busca los turnos de **mañana** y prepara los datos del recordatorio.\n\n**Nodos**\n- **Todos los días a las 9:00**: Schedule Trigger. Un único disparo diario, sin consumo continuo. El workflow usa la zona horaria `America/Argentina/Cordoba`.\n- **Buscar turnos de mañana**: filtro de Airtable con tres condiciones: Estado *CONFIRMADO*, *Recordatorio enviado* sin tildar y fecha del turno igual a mañana (calculada con `$now` en zona de Argentina).\n- **Normalizar turnos de mañana**: ordena nombre, mascota, WhatsApp (solo dígitos), fecha en texto (viernes 02/10) y hora.\n\n**Validación humana:** solo se recuerdan los turnos que la clínica ya confirmó. Si no hay turnos mañana, el flujo termina sin enviar nada.",
+        "height": 660,
+        "width": 780,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2256,
+        2240
+      ],
+      "id": "576fc863-255f-490f-b6f3-56beef5c387d",
+      "name": "Nota 1 - Disparo y selección"
+    },
+    {
+      "parameters": {
+        "content": "## 2️⃣ Recordatorio con botones y cierre\n\n**Nodos**\n- **Enviar recordatorio**: plantilla aprobada de WhatsApp `recordatorio_turno` (válida fuera de la ventana de 24 h) con nombre, mascota, fecha y hora. Incluye **3 botones de respuesta rápida**: *Sí, asistiré*, *Reprogramar* y *Cancelar turno*.\n- **Marcar recordatorio enviado**: tilda *Recordatorio enviado* (evita duplicados) y guarda el *Mensaje ID* del recordatorio en el turno.\n- **Registrar error de recordatorio**: si el envío falla, crea una fila en la tabla *Errores* (flujo *Recordatorios*) para que la clínica avise a mano.\n\n**Qué pasa cuando el cliente toca un botón**\nLa respuesta entra por el workflow del agente, en la rama de botones. El turno se identifica por el *Mensaje ID* del recordatorio y el número del cliente:\n- **Cancelar turno** → el turno pasa a CANCELADO y se dispara el aviso de cancelación.\n- **Reprogramar** → el agente de IA retoma la conversación y reprograma.\n- **Sí, asistiré** → respuesta inmediata de agradecimiento.",
+        "height": 896,
+        "width": 840,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        2128
+      ],
+      "id": "696d4bce-6aec-49bc-bd69-45a273156eb0",
+      "name": "Nota 2 - Recordatorio y cierre"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Tipo de mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error del agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many events in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar título en Calendar": {
+      "main": [
+        [
+          {
+            "node": "Enviar plantilla de confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records in Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record in Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar datos": {
+      "main": [
+        [
+          {
+            "node": "Según estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Según estado": {
+      "main": [
+        [
+          {
+            "node": "Actualizar título en Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Borrar evento cancelado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar agradecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar evento cancelado": {
+      "main": [
+        [
+          {
+            "node": "Enviar aviso de cancelación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record in Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar plantilla de confirmación": {
+      "main": [
+        [
+          {
+            "node": "Marcar enviada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error en tabla Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar aviso de cancelación": {
+      "main": [
+        [
+          {
+            "node": "Marcar enviada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error en tabla Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar agradecimiento": {
+      "main": [
+        [
+          {
+            "node": "Marcar enviada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error en tabla Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar error del agente": {
+      "main": [
+        [
+          {
+            "node": "Avisar falla al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de mensaje": {
+      "main": [
+        [
+          {
+            "node": "Texto del cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar turno del botón",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar turno del botón": {
+      "main": [
+        [
+          {
+            "node": "Datos del botón",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos del botón": {
+      "main": [
+        [
+          {
+            "node": "Acción del botón",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acción del botón": {
+      "main": [
+        [
+          {
+            "node": "Turno no activo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancelar turno desde botón",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Texto: reprogramar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Confirmar asistencia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Texto: reservar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Turno no activo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texto del cliente": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texto: reprogramar": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texto: reservar": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar error en tabla Errores": {
+      "main": [
+        []
+      ]
+    },
+    "Airtable Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalizar datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedir aprobación por Gmail": {
+      "main": [
+        [
+          {
+            "node": "Guardar hilo de correo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error de notificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Turno pendiente?": {
+      "main": [
+        [
+          {
+            "node": "Pedir aprobación por Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos del turno nuevo": {
+      "main": [
+        [
+          {
+            "node": "¿Turno pendiente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turno nuevo en Airtable": {
+      "main": [
+        [
+          {
+            "node": "Datos del turno nuevo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todos los días a las 9:00": {
+      "main": [
+        [
+          {
+            "node": "Buscar turnos de mañana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar turnos de mañana": {
+      "main": [
+        [
+          {
+            "node": "Normalizar turnos de mañana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar turnos de mañana": {
+      "main": [
+        [
+          {
+            "node": "Enviar recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Marcar recordatorio enviado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error de recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "e41ea976-b7e6-42c9-9800-0848436943bc",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "DzN64QaNq90x6vRS",
+  "tags": []
+}
