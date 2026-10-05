@@ -58,6 +58,14 @@ Cliente ──WhatsApp──▶ Trigger ──▶ ¿texto o botón?
 
 ## 🗄️ Estructura de Airtable
 
+## 👀 Demo de la base de datos
+
+Podés ver la estructura de las tablas (`Turnos`, `Clientes` y `Errores`) en una copia de solo lectura con datos de ejemplo:
+
+[Ver la base en Airtable](https://airtable.com/appsSVa8o9R9nB4Kk/shr2gFESFvB2RIzBz)
+
+Todos los datos de la demo son ficticios.
+
 ### Tabla `Turnos`
 
 | Campo | Tipo | Uso |
