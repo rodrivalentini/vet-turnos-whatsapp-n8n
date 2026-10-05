@@ -151,6 +151,11 @@ python sanitizar_workflow.py mi-workflow.original.json vet-turnos-whatsapp-n8n.j
 
 El script reemplaza IDs de credenciales, de Airtable, del calendario y del número de WhatsApp, además de correos, `instanceId` y `webhookId`.
 
+## 🗺️ Próximas mejoras
+
+- [ ] **Recordatorio personalizado por turno:** hoy el recordatorio se envía una vez al día, a la misma hora para todos los clientes. La idea es avisar **6 horas antes del horario de cada turno**. Esto implica ejecutar el flujo con más frecuencia (por ejemplo cada 15 o 30 minutos) y filtrar los turnos confirmados cuyo inicio caiga dentro de esa ventana y que no tengan el recordatorio enviado.
+- [ ] **Recordatorio al reprogramar:** si el recordatorio ya se envió y después el turno se reagenda, no se vuelve a enviar para el nuevo horario, porque el turno sigue marcado como "Recordatorio enviado". La idea es destildar esa marca al reprogramar para que el nuevo horario reciba su recordatorio.
+
 ## 📄 Licencia
 
 Elegí una licencia (por ejemplo MIT) y agregá el archivo `LICENSE`.
